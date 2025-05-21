@@ -10,16 +10,7 @@ This project is a FastAPI-based machine learning API for predicting customer chu
 - ✅ FastAPI backend with automatic OpenAPI docs
 - ✅ MLflow model integration for churn prediction
 - ✅ Health check and root endpoint
-- ✅ Dockerized for easy deployment
 - ✅ Ready for use with Swagger UI or Postman
-
----
-
-## 🧠 Model Info
-
-- Model: Logistic Regression / XGBoost (customizable)
-- Framework: Scikit-learn / MLflow
-- Target: Binary classification – Will the customer churn?
 
 ---
 
@@ -50,13 +41,6 @@ This project is a FastAPI-based machine learning API for predicting customer chu
    uvicorn app.main:app --reload
    ```
 
-### With Docker
-
-```bash
-docker build -t lab2_api .
-docker run -d -p 8000:8000 lab2_api
-```
-
 ---
 
 ## 🧪 API Endpoints
@@ -86,12 +70,6 @@ Ensure your ML model is logged and served using MLflow. The app uses `mlflow.pyf
 
 ---
 
-## 🐳 Docker Tips
-
-To view logs:
-```bash
-docker logs <container_id>
-```
 
 To access Swagger UI:
 - Open [http://localhost:8000/docs](http://localhost:8000/docs)
