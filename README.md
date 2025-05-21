@@ -1,43 +1,109 @@
-# Churn Prediction with MLflow Tracking
 
-## 📌 Project Overview
+# Lab 2 - Churn Prediction API
 
-This project predicts bank customer churn using logistic regression and tracks experiments using **MLflow**. It includes proper data preprocessing, class balancing, and performance evaluation through multiple metrics and visualizations.
+This project is a FastAPI-based machine learning API for predicting customer churn. The model is trained using historical customer data and deployed with an interactive Swagger UI for testing and development. It includes Docker support for containerization and uses MLflow for model tracking.
 
--------
+---
 
-## 🚀 Setup Instructions
+## 🚀 Features
 
-1. **Create and activate a virtual environment**:
-    ```bash
-    python -m venv churn_prediction
-    churn_prediction\Scripts\activate  # On Windows
-    ```
+- ✅ FastAPI backend with automatic OpenAPI docs
+- ✅ MLflow model integration for churn prediction
+- ✅ Health check and root endpoint
+- ✅ Dockerized for easy deployment
+- ✅ Ready for use with Swagger UI or Postman
 
-2. **Install dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
+---
 
-3. **Run MLflow UI (in a new terminal)**:
-    ```bash
-    mlflow ui
-    ```
+## 🧠 Model Info
 
-4. **Train and track experiments**:
-    ```bash
-    python -m src.main
-    ```
-## 📦 Files Overview      (Bounus Part)
-    - src/preprocessing.py: Data cleaning, encoding, scaling, and class balancing
-    
-    - src/train_model.py: Contains the training logic for logistic regression
-    
-    - src/visualize.py: Function to generate and log confusion matrix as image
-    
-    - src/main.py: The orchestrator script that brings everything together and runs MLflow experiment
-    
-    - requirements.txt: All dependencies for reproducibility
----------
+- Model: Logistic Regression / XGBoost (customizable)
+- Framework: Scikit-learn / MLflow
+- Target: Binary classification – Will the customer churn?
+
+---
 
 
+## ⚙️ Installation
+
+### Locally (with Python 3.10+)
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/mohamedAlaa26/lab2_api.git
+   cd lab2_api
+   ```
+
+2. Create a virtual environment and activate it:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Run the app:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+
+### With Docker
+
+```bash
+docker build -t lab2_api .
+docker run -d -p 8000:8000 lab2_api
+```
+
+---
+
+## 🧪 API Endpoints
+
+- `GET /` – Welcome message
+- `GET /health` – Health check
+- `POST /predict` – Submit customer data and get churn prediction
+
+### Example `POST /predict` payload:
+```json
+{
+  "gender": "Female",
+  "senior_citizen": 0,
+  "partner": "Yes",
+  "dependents": "No",
+  "tenure": 12,
+  "phone_service": "Yes"
+  ...
+}
+```
+
+---
+
+## 📊 MLflow Integration
+
+Ensure your ML model is logged and served using MLflow. The app uses `mlflow.pyfunc.load_model` to load the model from a given directory or remote URI.
+
+---
+
+## 🐳 Docker Tips
+
+To view logs:
+```bash
+docker logs <container_id>
+```
+
+To access Swagger UI:
+- Open [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 📝 Author
+
+- **Your Name** – [@your_github_username](https://github.com/your_github_username)
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
