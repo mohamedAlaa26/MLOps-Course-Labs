@@ -96,14 +96,3 @@ docker logs <container_id>
 To access Swagger UI:
 - Open [http://localhost:8000/docs](http://localhost:8000/docs)
 
----
-
-## 📝 Author
-
-- **Your Name** – [@your_github_username](https://github.com/your_github_username)
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
