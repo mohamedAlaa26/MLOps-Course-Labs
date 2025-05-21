@@ -7,7 +7,7 @@ def train(X_train, y_train):
     log_reg.fit(X_train, y_train)
     # Save the model
     joblib.dump(log_reg, "model.pkl")
-
+    
     signature = infer_signature(X_train, log_reg.predict(X_train))
     mlflow.sklearn.log_model(log_reg, "model", signature=signature)
 
