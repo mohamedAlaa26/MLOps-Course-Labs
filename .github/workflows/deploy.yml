@@ -47,8 +47,6 @@ jobs:
           TAG: mo
         run: |
           echo "ECR_REGISTRY=$ECR_REGISTRY"
-          echo "IMAGE_NAME=$IMAGE_NAME"
-          echo "TAG=$TAG"
           docker tag $IMAGE_NAME:$TAG $ECR_REGISTRY/$IMAGE_NAME:$TAG
           docker push $ECR_REGISTRY/$IMAGE_NAME:$TAG
 
@@ -62,13 +60,13 @@ jobs:
             sudo apt update -y || sudo yum update -y
             sudo apt install -y docker.io || sudo yum install -y docker
             sudo systemctl start docker || sudo service docker start
-      
+
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
               docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-      
+
             docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo
             docker stop churn-prediction || true
             docker rm churn-prediction || true
-      
+
             docker run -d -p 80:8005 --name churn-prediction \
               ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo
