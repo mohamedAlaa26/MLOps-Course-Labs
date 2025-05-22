@@ -52,13 +52,14 @@ jobs:
           docker tag $IMAGE_NAME:$TAG $ECR_REGISTRY/$IMAGE_NAME:$TAG
           docker push $ECR_REGISTRY/$IMAGE_NAME:$TAG
 
-      - name: Deploy to EC2 with Appleboy SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
+      - name: Write SSH key to file
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > ec2_key.pem
+          chmod 600 ec2_key.pem
+
+      - name: Deploy to EC2 manually via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ec2_key.pem ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
             sudo apt update -y || sudo yum update -y
             sudo apt install -y docker.io || sudo yum install -y docker
             sudo systemctl start docker || sudo service docker start
@@ -72,3 +73,4 @@ jobs:
 
             docker run -d -p 80:8000 --name churn-prediction \
               ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo
+          ENDSSH
