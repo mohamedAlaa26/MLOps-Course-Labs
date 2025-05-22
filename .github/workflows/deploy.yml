@@ -8,6 +8,8 @@ on:
 env:
   IMAGE_NAME: churn-prediction
   TAG: mo
+  ECR_REGISTRY: 123456789012.dkr.ecr.us-east-1.amazonaws.com
+  AWS_DEFAULT_REGION: us-east-1
 
 jobs:
   build-and-deploy:
@@ -41,8 +43,6 @@ jobs:
           docker build -t $IMAGE_NAME:$TAG .
 
       - name: Tag and Push to ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
           docker tag $IMAGE_NAME:$TAG $ECR_REGISTRY/$IMAGE_NAME:$TAG
