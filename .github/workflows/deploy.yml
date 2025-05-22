@@ -38,33 +38,33 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $IMAGE_NAME:mo001 .
+          docker build -t $IMAGE_NAME:$TAG .
 
       - name: Tag and Push to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker tag churn-prediction:mo001 $ECR_REGISTRY/$IMAGE_NAME:mo001
-          docker push $ECR_REGISTRY/$IMAGE_NAME:mo001
-          echo "ECR_IMAGE=$ECR_REGISTRY/$IMAGE_NAME:mo001" >> $GITHUB_ENV
+          docker tag $IMAGE_NAME:$TAG $ECR_REGISTRY/$IMAGE_NAME:$TAG
+          docker push $ECR_REGISTRY/$IMAGE_NAME:$TAG
+          echo "ECR_IMAGE=$ECR_REGISTRY/$IMAGE_NAME:$TAG" >> $GITHUB_ENV
 
-      - name: Deploy to EC2 with Appleboy SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            sudo apt update -y || sudo yum update -y
-            sudo apt install -y docker.io || sudo yum install -y docker
-            sudo systemctl start docker || sudo service docker start
+      # - name: Deploy to EC2 with Appleboy SSH
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.EC2_HOST }}
+      #     username: ${{ secrets.EC2_USERNAME }}
+      #     key: ${{ secrets.EC2_SSH_KEY }}
+      #     script: |
+      #       sudo apt update -y || sudo yum update -y
+      #       sudo apt install -y docker.io || sudo yum install -y docker
+      #       sudo systemctl start docker || sudo service docker start
 
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
-              docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+      #       aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+      #         docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo001
-            docker stop churn-prediction || true
-            docker rm churn-prediction || true
+      #       docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo001
+      #       docker stop churn-prediction || true
+      #       docker rm churn-prediction || true
 
-            docker run -d -p 80:8005 --name churn-prediction:mo001 \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo001
+      #       docker run -d -p 80:8005 --name churn-prediction:mo001 \
+      #         ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo001
