@@ -7,7 +7,7 @@ on:
 
 env:
   IMAGE_NAME: churn-prediction
-  TAG: mo001
+  TAG: mo
 
 jobs:
   build-and-deploy:
