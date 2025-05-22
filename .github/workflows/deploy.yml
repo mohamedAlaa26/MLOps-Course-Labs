@@ -38,15 +38,15 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $IMAGE_NAME:${{ env.TAG }} .
+          docker build -t $IMAGE_NAME:mo001 .
 
       - name: Tag and Push to ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          docker tag churn-prediction:mo001 $ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}
-          docker push $ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}
-          echo "ECR_IMAGE=$ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}" >> $GITHUB_ENV
+          docker tag churn-prediction:mo001 $ECR_REGISTRY/$IMAGE_NAME:mo001
+          docker push $ECR_REGISTRY/$IMAGE_NAME:mo001
+          echo "ECR_IMAGE=$ECR_REGISTRY/$IMAGE_NAME:mo001" >> $GITHUB_ENV
 
       - name: Deploy to EC2 with Appleboy SSH
         uses: appleboy/ssh-action@master
@@ -62,9 +62,9 @@ jobs:
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
               docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:${{ env.TAG }}
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo001
             docker stop churn-prediction || true
             docker rm churn-prediction || true
 
             docker run -d -p 80:8005 --name churn-prediction:mo001 \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:${{ env.TAG }}
+              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo001
