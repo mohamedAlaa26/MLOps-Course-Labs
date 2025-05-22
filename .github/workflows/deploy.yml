@@ -58,19 +58,22 @@ jobs:
           chmod 600 ec2_key.pem
 
       - name: Deploy to EC2 manually via SSH
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
         run: |
           ssh -o StrictHostKeyChecking=no -i ec2_key.pem ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
             sudo apt update -y || sudo yum update -y
             sudo apt install -y docker.io || sudo yum install -y docker
             sudo systemctl start docker || sudo service docker start
 
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
-              docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+            aws ecr get-login-password --region $AWS_REGION | \
+              docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo
+            docker pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/churn-prediction:mo
             docker stop churn-prediction || true
             docker rm churn-prediction || true
 
             docker run -d -p 80:8000 --name churn-prediction \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:mo
+              $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/churn-prediction:mo
           ENDSSH
