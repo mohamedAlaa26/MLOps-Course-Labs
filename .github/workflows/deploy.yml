@@ -1,9 +1,9 @@
-name: CI/CD Pipeline - Deploy to AWS EC2
+name: Deploy to AWS EC2
 
 on:
   push:
     branches:
-      - monitoring
+      - main
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
@@ -13,59 +13,62 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./app
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.12
+    # Configure AWS credentials BEFORE ECR login
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
 
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+    # - name: Run pytest
+    #   run: |
+    #     pytest test.py -v
 
-      - name: Build Docker image
-        run: |
-          docker build -t $IMAGE_NAME:${{ env.TAG }} .
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      with:
+        region: ${{ secrets.AWS_REGION }}  
 
-      - name: Tag and Push to ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          docker tag $IMAGE_NAME:${{ env.TAG }} $ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}
-          docker push $ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}
+    - name: Build Docker image
+      run: |
+        docker build -t ${{ env.IMAGE_NAME }}:${{ env.TAG }} .
 
-      - name: Deploy to EC2 with Appleboy SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }} # this should be the **raw private key**, NOT base64
-          script: |
-            sudo apt update -y || sudo yum update -y
-            sudo apt install -y docker || sudo yum install -y docker
-            sudo systemctl start docker || sudo service docker start
+    - name: Setup SSH Key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/ec2_key.pem
+        chmod 600 ~/.ssh/ec2_key.pem
 
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
-              docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
-
-            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:${{ env.TAG }}
-            docker stop churn-prediction || true
-            docker rm churn-prediction || true
-
-            docker run -d -p 80:8005 --name churn-prediction \
-              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:${{ env.TAG }}
+    - name: Deploy to EC2
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.EC2_HOST }} 
+        username: ${{ secrets.EC2_USERNAME }} 
+        key: ${{ secrets.EC2_SSH_KEY }}  
+        script: |
+          export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+          export AWS_REGION=${{ secrets.AWS_REGION }}
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+          docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:shouaib533
+          docker stop churn-prediction || true # In case the container doesn't exist yet
+          docker rm churn-prediction || true
+          docker run -d -p 80:8000 --name churn-prediction ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:latest
