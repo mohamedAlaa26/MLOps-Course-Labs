@@ -14,6 +14,12 @@ def test_health():
     assert response.json()["status"] == "ok"
 
 def test_predict():
-    response = client.post("/predict", json={"CreditScore": 600, "Age": 40, "Balance": 50000})
+    response = client.post("/predict", json={
+        "CreditScore": 600,
+        "Geography": 0,  # example: France
+        "Gender": 0,     # example: Male
+        "Age": 40,
+        "Balance": 50000.0
+    })
     assert response.status_code == 200
     assert "prediction" in response.json()
