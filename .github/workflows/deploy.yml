@@ -28,7 +28,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Unit Tests
-        run: pytest test/
+        run: PYTHONPATH=. pytest test/
 
       - name: Log in to Amazon ECR
         id: login-ecr
