@@ -47,6 +47,8 @@ jobs:
           TAG: mo
         run: |
           echo "ECR_REGISTRY=$ECR_REGISTRY"
+          echo "IMAGE_NAME=$IMAGE_NAME"
+          echo "TAG=$TAG"
           docker tag $IMAGE_NAME:$TAG $ECR_REGISTRY/$IMAGE_NAME:$TAG
           docker push $ECR_REGISTRY/$IMAGE_NAME:$TAG
 
