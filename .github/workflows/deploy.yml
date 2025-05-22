@@ -8,7 +8,7 @@ on:
 env:
   IMAGE_NAME: churn-prediction
   TAG: mo
-  ECR_REGISTRY: 123456789012.dkr.ecr.us-east-1.amazonaws.com
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
   AWS_DEFAULT_REGION: us-east-1
 
 jobs:
