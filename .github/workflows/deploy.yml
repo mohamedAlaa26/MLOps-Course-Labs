@@ -27,10 +27,6 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      # Optional: Run Unit Tests
-      # - name: Run Unit Tests
-      #   run: pytest
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -52,33 +48,24 @@ jobs:
         run: |
           docker tag $IMAGE_NAME:${{ env.TAG }} $ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}
           docker push $ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}
-          echo "ECR_IMAGE=$ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}" >> $GITHUB_ENV
 
-      - name: Setup SSH
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" | base64 -d > ec2_key.pem
-          chmod 400 ec2_key.pem
-
-      - name: Deploy to EC2 via SSH
-        run: |
-          ssh -o StrictHostKeyChecking=no -i ec2_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+      - name: Deploy to EC2 with Appleboy SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }} # this should be the **raw private key**, NOT base64
+          script: |
             sudo apt update -y || sudo yum update -y
-            sudo apt install -y docker docker-compose git || sudo yum install -y docker docker-compose git
-            sudo service docker start || sudo systemctl start docker
-
-            if [ ! -d "MLOps-Course-Labs" ]; then
-              git clone https://github.com/${{ github.repository }}.git
-            fi
-
-            cd MLOps-Course-Labs
-            git pull origin monitoring
+            sudo apt install -y docker || sudo yum install -y docker
+            sudo systemctl start docker || sudo service docker start
 
             aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
-              docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+              docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
 
-            sed -i "s|image:.*|image: $ECR_IMAGE|" docker-compose.yml
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:${{ env.TAG }}
+            docker stop churn-prediction || true
+            docker rm churn-prediction || true
 
-            docker-compose down || true
-            docker-compose pull
-            docker-compose up -d
-          EOF
+            docker run -d -p 80:8005 --name churn-prediction \
+              ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/churn-prediction:${{ env.TAG }}
