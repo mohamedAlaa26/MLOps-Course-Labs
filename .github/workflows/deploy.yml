@@ -27,12 +27,9 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+      # Uncomment this block if you have tests
+      # - name: Run Unit Tests
+      #   run: PYTHONPATH=. pytest test/
 
       - name: Log in to Amazon ECR
         id: login-ecr
@@ -50,33 +47,50 @@ jobs:
           docker push $ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}
           echo "ECR_IMAGE=$ECR_REGISTRY/$IMAGE_NAME:${{ env.TAG }}" >> $GITHUB_ENV
 
-      - name: Setup SSH
+      - name: Setup SSH Key
         run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" | base64 -d > ec2_key.pem
+          echo "${{ secrets.EC2_SSH_KEY }}" | base64 --decode > ec2_key.pem
           chmod 400 ec2_key.pem
 
       - name: Deploy to EC2
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i ec2_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            sudo apt update -y && sudo apt install -y docker.io docker-compose git
-            sudo systemctl start docker
-            sudo usermod -aG docker $USER || true
+          ssh -o StrictHostKeyChecking=no -i ec2_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << EOF
+            set -e
 
-            REPO_NAME=$(basename "${GITHUB_REPOSITORY}")
-            if [ ! -d "$REPO_NAME" ]; then
-              git clone https://github.com/${GITHUB_REPOSITORY}.git
-            else
-              cd "$REPO_NAME" && git pull && cd ..
+            # Ensure Docker is installed
+            if ! command -v docker &> /dev/null; then
+              echo "Installing Docker..."
+              if [ -f /etc/debian_version ]; then
+                sudo apt update && sudo apt install -y docker.io
+              else
+                sudo yum update -y && sudo yum install -y docker
+              fi
+              sudo systemctl start docker
+              sudo usermod -aG docker $USER
             fi
 
-            cd "$REPO_NAME"
+            # Pull from GitHub
+            REPO_NAME=$(basename "${{ github.repository }}")
+            if [ ! -d "$REPO_NAME" ]; then
+              git clone https://github.com/${{ github.repository }}.git
+            fi
 
-            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
-              docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            cd $REPO_NAME
+            git pull origin monitoring
 
+            # Authenticate to ECR
+            aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+              | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+            # Update docker-compose image
             sed -i "s|image:.*|image: $ECR_IMAGE|" docker-compose.yml
 
+            # Restart container
             docker-compose down || true
             docker-compose pull
             docker-compose up -d
+
+            echo "✅ Deployment complete"
           EOF
