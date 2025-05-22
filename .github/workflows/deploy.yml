@@ -46,7 +46,6 @@ jobs:
         run: |
           docker tag $IMAGE_NAME:$TAG $ECR_REGISTRY/$IMAGE_NAME:$TAG
           docker push $ECR_REGISTRY/$IMAGE_NAME:$TAG
-          echo "ECR_IMAGE=$ECR_REGISTRY/$IMAGE_NAME:$TAG" >> $GITHUB_ENV
 
       # - name: Deploy to EC2 with Appleboy SSH
       #   uses: appleboy/ssh-action@master
