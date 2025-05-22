@@ -57,23 +57,29 @@ jobs:
           echo "${{ secrets.EC2_SSH_KEY }}" > ec2_key.pem
           chmod 600 ec2_key.pem
 
-      - name: Deploy to EC2 manually via SSH
+      - name: Deploy app to EC2
         env:
-          AWS_REGION: ${{ secrets.AWS_REGION }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: ${{ env.AWS_REGION }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          TAG: ${{ env.TAG }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+
         run: |
-          ssh -o StrictHostKeyChecking=no -i ec2_key.pem ${{ secrets.EC2_USERNAME }}@${{ secrets.EC2_HOST }} << 'ENDSSH'
-            sudo apt update -y || sudo yum update -y
-            sudo apt install -y docker.io || sudo yum install -y docker
-            sudo systemctl start docker || sudo service docker start
-
-            aws ecr get-login-password --region $AWS_REGION | \
-              docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-
-            docker pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/churn-prediction:mo
-            docker stop churn-prediction || true
-            docker rm churn-prediction || true
-
-            docker run -d -p 80:8000 --name churn-prediction \
-              $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/churn-prediction:mo
-          ENDSSH
+          ssh -o StrictHostKeyChecking=no -i ec2_key.pem ubuntu@${{ secrets.EC2_HOST }} << EOF
+            echo "✅ Logged into EC2"
+  
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 060795916912.dkr.ecr.us-east-1.amazonaws.com
+            echo "✅ Logged into ECR"
+  
+            docker pull ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+            echo "✅ Pulled image from ECR"
+  
+            docker rm -f myapp || true
+            docker rm -f $(docker ps -aq)
+            docker rmi -f $(docker images -q)
+            echo "IMAGE NAME: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_NAME }}:${{ env.TAG }}"
+            docker run -d --name myapp -p 80:8000 ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_NAME }}:${{ env.TAG }}
+            docker logs myapp
+            echo "✅ Deployed app to EC2"
+          EOF
